@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Schedule - FitHeaven</title>
+    <meta name="description" content="Manage your workout schedule with FitHeaven's smart planning tools." />
+    <!-- Local Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- Sortable.js for drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="icon" href="images/icon.png" />
+    <style>
+      /* Page-specific styles */
+      .schedule-item {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: move;
+        position: relative;
+      }
+      .schedule-item:hover {
+        border-color: rgba(0,255,153,0.35);
+        box-shadow: 0 8px 20px rgba(0,255,153,0.15);
+        transform: translateY(-2px);
+      }
+      .schedule-item.dragging {
+        opacity: 0.5;
+        transform: rotate(5deg);
+      }
+      .drag-handle {
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--fh-text-muted);
+        cursor: grab;
+        font-size: 1.2rem;
+      }
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+      .schedule-item-content {
+        margin-left: 2rem;
+      }
+      .exercise-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+      }
+      .stats-card {
+        background: linear-gradient(135deg, rgba(0,255,153,0.1), rgba(0,123,255,0.1));
+        border: 1px solid rgba(0,255,153,0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.3s ease;
+      }
+      .stats-card:hover {
+        transform: translateY(-2px);
+      }
+      .stats-number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--fh-neon);
+        text-shadow: 0 0 20px rgba(0,255,153,0.3);
+      }
+      .stats-label {
+        color: var(--fh-text-muted);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.5rem;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--fh-text-muted);
+      }
+      .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      .action-buttons {
+        position: sticky;
+        bottom: 2rem;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 1rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        z-index: 100;
+      }
+      .difficulty-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+      }
+      .calories-estimate {
+        background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .sortable-ghost {
+        opacity: 0.4;
+        background: rgba(0,255,153,0.1);
+        border: 2px dashed var(--fh-neon);
+      }
+      .sortable-chosen {
+        transform: scale(1.02);
+      }
+      .motivation-quote {
+        background: linear-gradient(135deg, rgba(0,123,255,0.1), rgba(0,255,153,0.1));
+        border-left: 4px solid var(--fh-blue);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      .quote-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      .quote-author {
+        color: var(--fh-text-muted);
+        font-size: 0.9rem;
+      }
+      .export-section {
+        background: rgba(255,255,255,0.02);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent sticky-top glass">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">FitHeaven</a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="track.html">Track</a></li>
+            <li class="nav-item"><a class="nav-link" href="exercises.html">Exercises</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="schedule.html">Schedule</a></li>
+            <li class="nav-item"><a class="nav-link" href="rewards.html">Rewards</a></li>
+            <li class="nav-item"><a class="nav-link" href="map.html">Finder</a></li>
+            <li class="nav-item"><a class="nav-link" href="membership.html">Membership</a></li>
+          </ul>
+          <div class="d-flex align-items-center gap-3">
+            <div class="text-end small">
+              <div id="liveDate" class="fw-semibold"></div>
+              <div id="liveTime" class="text-secondary"></div>
+            </div>
+            <div class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" id="themeToggle" />
+              <label class="form-check-label small" for="themeToggle">Light</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-4 my-lg-5">
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h1 class="display-5 fw-bold mb-2">My Schedule</h1>
+          <p class="lead text-muted">Organize your workout plan and track your progress</p>
+        </div>
+      </div>
+
+      <!-- Motivation Quote -->
+      <div class="motivation-quote">
+        <div class="quote-text" id="motivationQuote">Loading motivation...</div>
+        <div class="quote-author" id="motivationAuthor"></div>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+          <div class="stats-card">
+            <div class="stats-number" id="totalExercises">0</div>
+            <div class="stats-label">Total Exercises</div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="stats-card">
+            <div class="stats-number" id="estimatedCalories">0</div>
+            <div class="stats-label">Est. Calories (30min)</div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="stats-card">
+            <div class="stats-number" id="estimatedTime">0</div>
+            <div class="stats-label">Est. Time (min)</div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="stats-card">
+            <div class="stats-number" id="difficultyScore">0</div>
+            <div class="stats-label">Difficulty Score</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Section -->
+      <div class="export-section">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h5 class="mb-2">Export Your Schedule</h5>
+            <p class="text-muted mb-0">Save your workout plan as a PDF or share it with others</p>
+          </div>
+          <div class="col-md-4 text-end">
+            <button class="btn btn-neon me-2" id="exportPDF">
+              <span class="me-2">📄</span>Export PDF
+            </button>
+            <button class="btn btn-outline-neon" id="shareSchedule">
+              <span class="me-2">📤</span>Share
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schedule List -->
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">Your Workout Plan</h3>
+            <div>
+              <button class="btn btn-outline-danger btn-sm me-2" id="clearSchedule" style="display: none;">
+                Clear All
+              </button>
+              <button class="btn btn-outline-neon btn-sm" id="addMoreExercises">
+                <span class="me-1">➕</span>Add More
+              </button>
+            </div>
+          </div>
+          
+          <div id="scheduleList">
+            <!-- Schedule items will be populated by JavaScript -->
+          </div>
+          
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="icon">📅</div>
+            <h4>No exercises in your schedule</h4>
+            <p>Start building your workout plan by adding exercises from the library</p>
+            <a href="exercises.html" class="btn btn-neon">
+              <span class="me-2">🏃‍♂️</span>Browse Exercises
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons (Sticky) -->
+    <div class="action-buttons">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge bg-primary" id="exerciseCount">0 exercises</span>
+              <span class="badge calories-estimate" id="quickCalories">0 cal</span>
+              <span class="text-muted small" id="quickTime">0 min</span>
+            </div>
+          </div>
+          <div class="col-md-4 text-end">
+            <button class="btn btn-neon" id="saveSchedule">
+              <span class="me-2">💾</span>Save Plan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+      <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+          <strong class="me-auto">🎉 Schedule Updated!</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+          Your workout plan has been saved!
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/script.js"></script>
+
+    <!-- Page Logic -->
+    <script>
+      (function () {
+        let sortableInstance = null;
+        const SCHEDULE_KEY = 'fh_schedule';
+
+        // Initialize
+        function init() {
+          loadTheme();
+          wireThemeToggle();
+          startClock();
+          loadSchedule();
+          wireEvents();
+          displayMotivationQuote();
+        }
+
+        // Theme management
+        function loadTheme() {
+          const saved = localStorage.getItem('fh_theme') || 'dark';
+          document.documentElement.setAttribute("data-bs-theme", saved);
+          const toggle = document.getElementById("themeToggle");
+          if (toggle) toggle.checked = saved === "light";
+        }
+        function wireThemeToggle() {
+          const toggle = document.getElementById("themeToggle");
+          if (!toggle) return;
+          toggle.addEventListener("change", () => {
+            const mode = toggle.checked ? "light" : "dark";
+            document.documentElement.setAttribute("data-bs-theme", mode);
+            localStorage.setItem('fh_theme', mode);
+          });
+        }
+
+        // Clock
+        function startClock() {
+          const dateEl = document.getElementById("liveDate");
+          const timeEl = document.getElementById("liveTime");
+          function tick() {
+            const now = new Date();
+            dateEl && (dateEl.textContent = now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+            timeEl && (timeEl.textContent = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+          }
+          tick();
+          setInterval(tick, 1000);
+        }
+
+        // Load schedule from localStorage
+        function loadSchedule() {
+          const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+          displaySchedule(schedule);
+          updateStats(schedule);
+        }
+
+        // Display schedule
+        function displaySchedule(schedule) {
+          const container = document.getElementById("scheduleList");
+          const emptyState = document.getElementById("emptyState");
+          const clearBtn = document.getElementById("clearSchedule");
+          
+          if (schedule.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'block';
+            clearBtn.style.display = 'none';
+            return;
+          }
+          
+          container.style.display = 'block';
+          emptyState.style.display = 'none';
+          clearBtn.style.display = 'block';
+          
+          container.innerHTML = schedule.map((item, index) => createScheduleItem(item, index)).join('');
+          
+          // Initialize sortable
+          initSortable();
+        }
+
+        // Create schedule item HTML
+        function createScheduleItem(item, index) {
+          const exercise = FH_EXERCISE_DATA.getById(item.exerciseId);
+          if (!exercise) return '';
+          
+          const difficultyColors = {
+            'Easy': 'success',
+            'Medium': 'warning',
+            'Hard': 'danger'
+          };
+          
+          return `
+            <div class="schedule-item" data-id="${item.id}" data-index="${index}">
+              <div class="drag-handle">⋮⋮</div>
+              <div class="schedule-item-content">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <div class="exercise-icon">${exercise.icon}</div>
+                    <div>
+                      <h5 class="mb-1">${exercise.name}</h5>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-${difficultyColors[exercise.difficulty]} difficulty-badge">${exercise.difficulty}</span>
+                        <span class="badge bg-secondary">${exercise.bodyPart}</span>
+                        <span class="badge ${exercise.mode === 'Gym' ? 'bg-primary' : 'bg-success'}">${exercise.mode}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="text-end">
+                      <div class="calories-estimate">${exercise.calories * 30} cal (30min)</div>
+                      <small class="text-muted">${exercise.calories} cal/min</small>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm" onclick="removeFromSchedule('${item.id}')">
+                      <span>🗑️</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // Initialize sortable functionality
+        function initSortable() {
+          const container = document.getElementById("scheduleList");
+          if (sortableInstance) {
+            sortableInstance.destroy();
+          }
+          
+          sortableInstance = new Sortable(container, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'dragging',
+            onEnd: function(evt) {
+              reorderSchedule(evt.oldIndex, evt.newIndex);
+            }
+          });
+        }
+
+        // Reorder schedule
+        function reorderSchedule(oldIndex, newIndex) {
+          const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+          const item = schedule.splice(oldIndex, 1)[0];
+          schedule.splice(newIndex, 0, item);
+          localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+          loadSchedule();
+          showSuccessToast("Schedule reordered successfully!");
+        }
+
+        // Remove from schedule
+        window.removeFromSchedule = function(itemId) {
+          if (confirm("Remove this exercise from your schedule?")) {
+            const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+            const filtered = schedule.filter(item => item.id !== itemId);
+            localStorage.setItem(SCHEDULE_KEY, JSON.stringify(filtered));
+            loadSchedule();
+            showSuccessToast("Exercise removed from schedule");
+          }
+        };
+
+        // Update statistics
+        function updateStats(schedule) {
+          const totalExercises = schedule.length;
+          let estimatedCalories = 0;
+          let estimatedTime = 0;
+          let difficultyScore = 0;
+          
+          schedule.forEach(item => {
+            const exercise = FH_EXERCISE_DATA.getById(item.exerciseId);
+            if (exercise) {
+              estimatedCalories += exercise.calories * 30; // 30 minutes per exercise
+              estimatedTime += 30; // 30 minutes per exercise
+              
+              // Difficulty scoring
+              const difficultyPoints = {
+                'Easy': 1,
+                'Medium': 2,
+                'Hard': 3
+              };
+              difficultyScore += difficultyPoints[exercise.difficulty] || 1;
+            }
+          });
+          
+          document.getElementById("totalExercises").textContent = totalExercises;
+          document.getElementById("estimatedCalories").textContent = estimatedCalories.toLocaleString();
+          document.getElementById("estimatedTime").textContent = estimatedTime;
+          document.getElementById("difficultyScore").textContent = difficultyScore;
+          
+          // Update sticky bar
+          document.getElementById("exerciseCount").textContent = `${totalExercises} exercises`;
+          document.getElementById("quickCalories").textContent = `${estimatedCalories} cal`;
+          document.getElementById("quickTime").textContent = `${estimatedTime} min`;
+        }
+
+        // Display motivation quote
+        function displayMotivationQuote() {
+          const quotes = [
+            { text: "A well-planned workout is a successful workout.", author: "FitHeaven" },
+            { text: "Consistency is the key to achieving your fitness goals.", author: "Unknown" },
+            { text: "Your schedule is your roadmap to success.", author: "FitHeaven" },
+            { text: "Plan your work, work your plan.", author: "Unknown" },
+            { text: "Every exercise in your schedule is a step toward your goal.", author: "FitHeaven" }
+          ];
+          
+          const quote = quotes[Math.floor(Math.random() * quotes.length)];
+          document.getElementById("motivationQuote").textContent = `"${quote.text}"`;
+          document.getElementById("motivationAuthor").textContent = `— ${quote.author}`;
+        }
+
+        // Export to PDF
+        function exportToPDF() {
+          const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+          if (schedule.length === 0) {
+            alert("No exercises in your schedule to export!");
+            return;
+          }
+          
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          
+          // Title
+          doc.setFontSize(20);
+          doc.text('FitHeaven Workout Schedule', 20, 30);
+          
+          // Date
+          doc.setFontSize(12);
+          doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 45);
+          
+          // Stats
+          let y = 60;
+          doc.setFontSize(14);
+          doc.text('Schedule Summary:', 20, y);
+          y += 10;
+          
+          let totalCalories = 0;
+          let totalTime = 0;
+          schedule.forEach(item => {
+            const exercise = FH_EXERCISE_DATA.getById(item.exerciseId);
+            if (exercise) {
+              totalCalories += exercise.calories * 30;
+              totalTime += 30;
+            }
+          });
+          
+          doc.setFontSize(10);
+          doc.text(`Total Exercises: ${schedule.length}`, 20, y);
+          y += 8;
+          doc.text(`Estimated Calories (30min each): ${totalCalories}`, 20, y);
+          y += 8;
+          doc.text(`Estimated Time: ${totalTime} minutes`, 20, y);
+          y += 15;
+          
+          // Exercises
+          doc.setFontSize(14);
+          doc.text('Your Workout Plan:', 20, y);
+          y += 10;
+          
+          schedule.forEach((item, index) => {
+            const exercise = FH_EXERCISE_DATA.getById(item.exerciseId);
+            if (exercise) {
+              if (y > 250) {
+                doc.addPage();
+                y = 20;
+              }
+              
+              doc.setFontSize(12);
+              doc.text(`${index + 1}. ${exercise.name}`, 20, y);
+              y += 8;
+              
+              doc.setFontSize(10);
+              doc.text(`   Body Part: ${exercise.bodyPart}`, 20, y);
+              y += 6;
+              doc.text(`   Difficulty: ${exercise.difficulty}`, 20, y);
+              y += 6;
+              doc.text(`   Mode: ${exercise.mode}`, 20, y);
+              y += 6;
+              doc.text(`   Calories: ${exercise.calories}/min (${exercise.calories * 30} for 30min)`, 20, y);
+              y += 6;
+              doc.text(`   Equipment: ${exercise.equipment}`, 20, y);
+              y += 10;
+            }
+          });
+          
+          // Footer
+          doc.setFontSize(8);
+          doc.text('Generated by FitHeaven - The Smart Fitness Ecosystem', 20, doc.internal.pageSize.height - 10);
+          
+          // Save
+          doc.save('fitheaven-workout-schedule.pdf');
+          showSuccessToast("Schedule exported to PDF successfully!");
+        }
+
+        // Share schedule
+        function shareSchedule() {
+          const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+          if (schedule.length === 0) {
+            alert("No exercises in your schedule to share!");
+            return;
+          }
+          
+          let shareText = "Check out my FitHeaven workout schedule!\n\n";
+          schedule.forEach((item, index) => {
+            const exercise = FH_EXERCISE_DATA.getById(item.exerciseId);
+            if (exercise) {
+              shareText += `${index + 1}. ${exercise.name} (${exercise.bodyPart}, ${exercise.difficulty})\n`;
+            }
+          });
+          shareText += "\nBuilt with FitHeaven - The Smart Fitness Ecosystem";
+          
+          if (navigator.share) {
+            navigator.share({
+              title: 'My FitHeaven Workout Schedule',
+              text: shareText
+            });
+          } else {
+            // Fallback: copy to clipboard
+            navigator.clipboard.writeText(shareText).then(() => {
+              showSuccessToast("Schedule copied to clipboard!");
+            });
+          }
+        }
+
+        // Clear schedule
+        function clearSchedule() {
+          if (confirm("Are you sure you want to clear your entire schedule? This cannot be undone.")) {
+            localStorage.removeItem(SCHEDULE_KEY);
+            loadSchedule();
+            showSuccessToast("Schedule cleared successfully!");
+          }
+        }
+
+        // Save schedule (with motivation)
+        function saveSchedule() {
+          const schedule = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+          if (schedule.length === 0) {
+            alert("No exercises in your schedule to save!");
+            return;
+          }
+          
+          // Award points for saving
+          const currentPoints = parseInt(localStorage.getItem('fh_points') || '0');
+          localStorage.setItem('fh_points', String(currentPoints + 10));
+          
+          showSuccessToast("Schedule saved! +10 FitPoints earned!");
+        }
+
+        // Show success toast
+        function showSuccessToast(message) {
+          const toastEl = document.getElementById("successToast");
+          const messageEl = document.getElementById("toastMessage");
+          if (messageEl) messageEl.textContent = message;
+          
+          const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+          toast.show();
+        }
+
+        // Wire events
+        function wireEvents() {
+          document.getElementById("exportPDF").addEventListener("click", exportToPDF);
+          document.getElementById("shareSchedule").addEventListener("click", shareSchedule);
+          document.getElementById("clearSchedule").addEventListener("click", clearSchedule);
+          document.getElementById("saveSchedule").addEventListener("click", saveSchedule);
+          document.getElementById("addMoreExercises").addEventListener("click", () => {
+            window.location.href = "exercises.html";
+          });
+        }
+
+        // Start the app
+        init();
+      })();
+    </script>
+  </body>
+</html>

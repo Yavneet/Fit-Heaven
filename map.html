@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Location Finder - FitHeaven</title>
+    <meta name="description" content="Find healthy cafés and gyms near you with FitHeaven's location finder." />
+    <!-- Local Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="images/icon.png" />
+    <style>
+      /* Page-specific styles */
+      .map-container {
+        height: 70vh;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .filter-section {
+        background: rgba(255,255,255,0.02);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .filter-btn {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: var(--fh-text);
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin: 0.25rem;
+        cursor: pointer;
+      }
+      .filter-btn:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: var(--fh-neon);
+        color: var(--fh-neon);
+        transform: translateY(-2px);
+      }
+      .filter-btn.active {
+        background: var(--fh-neon);
+        color: #04150f;
+        border-color: var(--fh-neon);
+        box-shadow: 0 8px 20px rgba(0,255,153,0.3);
+      }
+      .location-stats {
+        background: linear-gradient(135deg, rgba(0,255,153,0.1), rgba(0,123,255,0.1));
+        border: 1px solid rgba(0,255,153,0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      .stat-item {
+        text-align: center;
+        padding: 1rem;
+      }
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--fh-neon);
+        text-shadow: 0 0 20px rgba(0,255,153,0.3);
+      }
+      .stat-label {
+        color: var(--fh-text-muted);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.5rem;
+      }
+      .location-list {
+        max-height: 400px;
+        overflow-y: auto;
+        background: rgba(255,255,255,0.02);
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .location-item {
+        background: rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .location-item:hover {
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(0,255,153,0.3);
+        transform: translateY(-2px);
+      }
+      .location-item:last-child {
+        margin-bottom: 0;
+      }
+      .location-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+      }
+      .location-rating {
+        color: #ffa500;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+      .location-features {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+      .feature-badge {
+        background: rgba(0,255,153,0.15);
+        color: var(--fh-neon);
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        border: 1px solid rgba(0,255,153,0.3);
+      }
+      .discount-badge {
+        background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin-top: 1rem;
+      }
+      .search-box {
+        position: relative;
+        margin-bottom: 2rem;
+      }
+      .search-box .form-control {
+        padding-left: 3rem;
+        border-radius: 25px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.15);
+        color: var(--fh-text);
+      }
+      .search-box .form-control:focus {
+        background: rgba(255,255,255,0.08);
+        border-color: var(--fh-neon);
+        box-shadow: 0 0 0 0.2rem rgba(0,255,153,0.25);
+        color: var(--fh-text);
+      }
+      .search-box .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--fh-text-muted);
+        font-size: 1.2rem;
+      }
+      .map-controls {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .map-control-btn {
+        background: rgba(0,0,0,0.7);
+        border: none;
+        color: white;
+        padding: 0.75rem;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+      }
+      .map-control-btn:hover {
+        background: rgba(0,255,153,0.8);
+        color: #04150f;
+        transform: scale(1.1);
+      }
+      .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--fh-text-muted);
+      }
+      .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      @media (max-width: 768px) {
+        .map-container {
+          height: 50vh;
+        }
+        .location-list {
+          max-height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent sticky-top glass">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">FitHeaven</a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="track.html">Track</a></li>
+            <li class="nav-item"><a class="nav-link" href="exercises.html">Exercises</a></li>
+            <li class="nav-item"><a class="nav-link" href="schedule.html">Schedule</a></li>
+            <li class="nav-item"><a class="nav-link" href="rewards.html">Rewards</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="map.html">Finder</a></li>
+            <li class="nav-item"><a class="nav-link" href="membership.html">Membership</a></li>
+          </ul>
+          <div class="d-flex align-items-center gap-3">
+            <div class="text-end small">
+              <div id="liveDate" class="fw-semibold"></div>
+              <div id="liveTime" class="text-secondary"></div>
+            </div>
+            <div class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" id="themeToggle" />
+              <label class="form-check-label small" for="themeToggle">Light</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-4 my-lg-5">
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h1 class="display-5 fw-bold mb-2">Location Finder</h1>
+          <p class="lead text-muted">Discover healthy cafés and gyms near you</p>
+        </div>
+      </div>
+
+      <!-- Location Stats -->
+      <div class="location-stats">
+        <div class="row">
+          <div class="col-md-3">
+            <div class="stat-item">
+              <div class="stat-number" id="totalLocations">0</div>
+              <div class="stat-label">Total Locations</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-item">
+              <div class="stat-number" id="cafeCount">0</div>
+              <div class="stat-label">Healthy Cafés</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-item">
+              <div class="stat-number" id="gymCount">0</div>
+              <div class="stat-label">Fitness Centers</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-item">
+              <div class="stat-number" id="discountCount">0</div>
+              <div class="stat-label">FitPoints Discounts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search and Filters -->
+      <div class="filter-section">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="form-control" id="searchInput" placeholder="Search locations by name or features...">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex flex-wrap justify-content-end">
+              <button class="filter-btn active" data-filter="all">All Locations</button>
+              <button class="filter-btn" data-filter="cafe">☕ Cafés</button>
+              <button class="filter-btn" data-filter="gym">🏋️ Gyms</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map and Location List -->
+      <div class="row">
+        <div class="col-lg-8 mb-4">
+          <div class="position-relative">
+            <div id="map" class="map-container"></div>
+            <div class="map-controls">
+              <button class="map-control-btn" onclick="FH_MAP.loadUserLocation()" title="My Location">
+                📍
+              </button>
+              <button class="map-control-btn" onclick="FH_MAP.map.setZoom(FH_MAP.map.getZoom() + 1)" title="Zoom In">
+                ➕
+              </button>
+              <button class="map-control-btn" onclick="FH_MAP.map.setZoom(FH_MAP.map.getZoom() - 1)" title="Zoom Out">
+                ➖
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <h5 class="mb-3">Nearby Locations</h5>
+          <div class="location-list" id="locationList">
+            <!-- Location items will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Features Section -->
+      <div class="row mt-5">
+        <div class="col-12">
+          <div class="fh-card p-4">
+            <h4 class="mb-4">Why Use FitHeaven Location Finder?</h4>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <div class="text-center">
+                  <div class="mb-3" style="font-size: 3rem;">🎯</div>
+                  <h6>FitPoints Discounts</h6>
+                  <p class="text-muted small">Redeem your earned FitPoints for exclusive discounts at partner locations</p>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="text-center">
+                  <div class="mb-3" style="font-size: 3rem;">🏃‍♂️</div>
+                  <h6>Healthy Options</h6>
+                  <p class="text-muted small">Find cafés and restaurants that support your fitness goals with nutritious options</p>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="text-center">
+                  <div class="mb-3" style="font-size: 3rem;">💪</div>
+                  <h6>Quality Gyms</h6>
+                  <p class="text-muted small">Discover premium fitness centers with state-of-the-art equipment and expert trainers</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+      <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+          <strong class="me-auto">🎉 Discount Redeemed!</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+          Your FitPoints discount has been redeemed!
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/map.js"></script>
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7VlwGHCDbPJv40SPpJ6jQkM61CVuTaG4&callback=initMap"></script>
+
+    <!-- Page Logic -->
+    <script>
+      // Initialize map when Google Maps API loads
+      function initMap() {
+        FH_MAP.init();
+        updateLocationStats();
+        displayLocationList();
+        wireSearch();
+      }
+
+      // Update location statistics
+      function updateLocationStats() {
+        const locations = FH_MAP.locations;
+        const cafes = locations.filter(loc => loc.type === 'cafe').length;
+        const gyms = locations.filter(loc => loc.type === 'gym').length;
+        
+        document.getElementById("totalLocations").textContent = locations.length;
+        document.getElementById("cafeCount").textContent = cafes;
+        document.getElementById("gymCount").textContent = gyms;
+        document.getElementById("discountCount").textContent = locations.length; // All have discounts
+      }
+
+      // Display location list
+      function displayLocationList() {
+        const container = document.getElementById("locationList");
+        const locations = FH_MAP.locations.filter(loc => {
+          if (FH_MAP.currentFilter === 'all') return true;
+          return loc.type === FH_MAP.currentFilter;
+        });
+        
+        if (locations.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">🔍</div>
+              <h6>No locations found</h6>
+              <p class="small">Try adjusting your filters</p>
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = locations.map(location => createLocationItem(location)).join('');
+      }
+
+      // Create location item HTML
+      function createLocationItem(location) {
+        const stars = '★'.repeat(Math.floor(location.rating)) + '☆'.repeat(5 - Math.floor(location.rating));
+        const priceLevel = '$'.repeat(location.priceLevel);
+        const icon = location.type === 'cafe' ? '☕' : '🏋️';
+        
+        return `
+          <div class="location-item" onclick="focusOnLocation('${location.id}')">
+            <div class="d-flex align-items-start">
+              <div class="location-icon">${icon}</div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1">${location.name}</h6>
+                <div class="location-rating">${stars} ${location.rating}</div>
+                <div class="text-muted small mb-2">${priceLevel} • ${location.address}</div>
+                <div class="text-muted small mb-2">${location.hours}</div>
+                <div class="location-features">
+                  ${location.features.slice(0, 3).map(feature => `<span class="feature-badge">${feature}</span>`).join('')}
+                </div>
+                <div class="discount-badge">${location.discount}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Focus on specific location
+      function focusOnLocation(locationId) {
+        const location = FH_MAP.locations.find(loc => loc.id === locationId);
+        if (location) {
+          FH_MAP.map.setCenter({ lat: location.lat, lng: location.lng });
+          FH_MAP.map.setZoom(16);
+          
+          // Find and open the marker's info window
+          const markerData = FH_MAP.markers.find(m => m.location && m.location.id === locationId);
+          if (markerData) {
+            FH_MAP.closeAllInfoWindows();
+            markerData.infoWindow.open(FH_MAP.map, markerData.marker);
+          }
+        }
+      }
+
+      // Wire search functionality
+      function wireSearch() {
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput) {
+          searchInput.addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase();
+            const filteredLocations = FH_MAP.locations.filter(location => {
+              if (FH_MAP.currentFilter !== 'all' && location.type !== FH_MAP.currentFilter) {
+                return false;
+              }
+              return location.name.toLowerCase().includes(query) ||
+                     location.features.some(feature => feature.toLowerCase().includes(query)) ||
+                     location.category.toLowerCase().includes(query);
+            });
+            
+            // Update map markers
+            FH_MAP.clearMarkers();
+            filteredLocations.forEach(location => {
+              FH_MAP.addMarker(location);
+            });
+            
+            // Update location list
+            updateLocationList(filteredLocations);
+          });
+        }
+      }
+
+      // Update location list
+      function updateLocationList(locations) {
+        const container = document.getElementById("locationList");
+        
+        if (locations.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">🔍</div>
+              <h6>No locations found</h6>
+              <p class="small">Try a different search term</p>
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = locations.map(location => createLocationItem(location)).join('');
+      }
+
+      // Theme management
+      function loadTheme() {
+        const saved = localStorage.getItem('fh_theme') || 'dark';
+        document.documentElement.setAttribute("data-bs-theme", saved);
+        const toggle = document.getElementById("themeToggle");
+        if (toggle) toggle.checked = saved === "light";
+      }
+      function wireThemeToggle() {
+        const toggle = document.getElementById("themeToggle");
+        if (!toggle) return;
+        toggle.addEventListener("change", () => {
+          const mode = toggle.checked ? "light" : "dark";
+          document.documentElement.setAttribute("data-bs-theme", mode);
+          localStorage.setItem('fh_theme', mode);
+        });
+      }
+
+      // Clock
+      function startClock() {
+        const dateEl = document.getElementById("liveDate");
+        const timeEl = document.getElementById("liveTime");
+        function tick() {
+          const now = new Date();
+          dateEl && (dateEl.textContent = now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+          timeEl && (timeEl.textContent = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+        }
+        tick();
+        setInterval(tick, 1000);
+      }
+
+      // Initialize page
+      function init() {
+        loadTheme();
+        wireThemeToggle();
+        startClock();
+      }
+
+      // Start the app
+      init();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exercise Library - FitHeaven</title>
+    <meta name="description" content="Explore FitHeaven's comprehensive exercise library with filtering and workout planning." />
+    <!-- Local Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <!-- App Styles -->
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="images/icon.png" />
+    <style>
+      /* Page-specific styles */
+      .exercise-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: 100%;
+      }
+      .exercise-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,255,153,0.2);
+      }
+      .exercise-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
+      .difficulty-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+      }
+      .calories-badge {
+        background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        color: white;
+        font-weight: 600;
+      }
+      .filter-section {
+        background: rgba(255,255,255,0.02);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .search-box {
+        position: relative;
+      }
+      .search-box .form-control {
+        padding-left: 3rem;
+      }
+      .search-box .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--fh-text-muted);
+      }
+      .exercise-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+      .exercise-details {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        z-index: 1000;
+        overflow-y: auto;
+      }
+      .exercise-details.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      .exercise-details-content {
+        background: var(--fh-bg-secondary);
+        border-radius: 20px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 1px solid var(--fh-border);
+      }
+      .close-details {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: var(--fh-text);
+        font-size: 1.5rem;
+        cursor: pointer;
+      }
+      .instructions-list {
+        list-style: none;
+        padding: 0;
+      }
+      .instructions-list li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--fh-border);
+        position: relative;
+        padding-left: 2rem;
+      }
+      .instructions-list li:before {
+        content: counter(step-counter);
+        counter-increment: step-counter;
+        position: absolute;
+        left: 0;
+        top: 0.5rem;
+        background: var(--fh-neon);
+        color: #04150f;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .instructions-list {
+        counter-reset: step-counter;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--fh-text-muted);
+      }
+      .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      .stats-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: rgba(0,255,153,0.1);
+        border-radius: 12px;
+        border: 1px solid rgba(0,255,153,0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent sticky-top glass">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">FitHeaven</a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="track.html">Track</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="exercises.html">Exercises</a></li>
+            <li class="nav-item"><a class="nav-link" href="schedule.html">Schedule</a></li>
+            <li class="nav-item"><a class="nav-link" href="rewards.html">Rewards</a></li>
+            <li class="nav-item"><a class="nav-link" href="map.html">Finder</a></li>
+            <li class="nav-item"><a class="nav-link" href="membership.html">Membership</a></li>
+          </ul>
+          <div class="d-flex align-items-center gap-3">
+            <div class="text-end small">
+              <div id="liveDate" class="fw-semibold"></div>
+              <div id="liveTime" class="text-secondary"></div>
+            </div>
+            <div class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" id="themeToggle" />
+              <label class="form-check-label small" for="themeToggle">Light</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-4 my-lg-5">
+      <!-- Page Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h1 class="display-5 fw-bold mb-2">Exercise Library</h1>
+          <p class="lead text-muted">Discover exercises, build your plan, and achieve your fitness goals</p>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar">
+        <div>
+          <strong id="totalExercises">0</strong> exercises available
+        </div>
+        <div>
+          <span class="badge bg-primary me-2" id="gymCount">0</span> Gym
+          <span class="badge bg-success ms-2" id="outdoorCount">0</span> Outdoor
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-section">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="bodyPartFilter" class="form-label">Body Part</label>
+            <select class="form-select" id="bodyPartFilter">
+              <option value="All">All Body Parts</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="modeFilter" class="form-label">Mode</label>
+            <select class="form-select" id="modeFilter">
+              <option value="All">All Modes</option>
+              <option value="Gym">Gym</option>
+              <option value="Outdoor">Outdoor</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="difficultyFilter" class="form-label">Difficulty</label>
+            <select class="form-select" id="difficultyFilter">
+              <option value="All">All Levels</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="form-control" id="searchInput" placeholder="Search exercises by name, description, or body part...">
+            </div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12">
+            <button class="btn btn-outline-neon" id="clearFilters">Clear All Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise Grid -->
+      <div id="exerciseGrid" class="exercise-grid">
+        <!-- Exercises will be populated by JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="icon">🔍</div>
+        <h4>No exercises found</h4>
+        <p>Try adjusting your filters or search terms</p>
+        <button class="btn btn-neon" onclick="clearAllFilters()">Clear Filters</button>
+      </div>
+    </div>
+
+    <!-- Exercise Details Modal -->
+    <div id="exerciseDetails" class="exercise-details">
+      <div class="exercise-details-content">
+        <button class="close-details" onclick="closeExerciseDetails()">&times;</button>
+        <div id="exerciseDetailsContent">
+          <!-- Content will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+      <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+          <strong class="me-auto">🎉 Added to Plan!</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+          Exercise added to your schedule!
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/script.js"></script>
+
+    <!-- Page Logic -->
+    <script>
+      (function () {
+        let currentFilters = {
+          bodyPart: 'All',
+          mode: 'All',
+          difficulty: 'All',
+          search: ''
+        };
+
+        // Initialize
+        function init() {
+          loadTheme();
+          wireThemeToggle();
+          startClock();
+          populateFilters();
+          loadExercises();
+          wireFilters();
+        }
+
+        // Theme management
+        function loadTheme() {
+          const saved = localStorage.getItem('fh_theme') || 'dark';
+          document.documentElement.setAttribute("data-bs-theme", saved);
+          const toggle = document.getElementById("themeToggle");
+          if (toggle) toggle.checked = saved === "light";
+        }
+        function wireThemeToggle() {
+          const toggle = document.getElementById("themeToggle");
+          if (!toggle) return;
+          toggle.addEventListener("change", () => {
+            const mode = toggle.checked ? "light" : "dark";
+            document.documentElement.setAttribute("data-bs-theme", mode);
+            localStorage.setItem('fh_theme', mode);
+          });
+        }
+
+        // Clock
+        function startClock() {
+          const dateEl = document.getElementById("liveDate");
+          const timeEl = document.getElementById("liveTime");
+          function tick() {
+            const now = new Date();
+            dateEl && (dateEl.textContent = now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+            timeEl && (timeEl.textContent = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+          }
+          tick();
+          setInterval(tick, 1000);
+        }
+
+        // Populate filter dropdowns
+        function populateFilters() {
+          const bodyPartSelect = document.getElementById("bodyPartFilter");
+          const bodyParts = FH_EXERCISE_DATA.getBodyParts();
+          
+          bodyParts.forEach(part => {
+            const option = document.createElement('option');
+            option.value = part;
+            option.textContent = part;
+            bodyPartSelect.appendChild(option);
+          });
+        }
+
+        // Load and display exercises
+        function loadExercises() {
+          const exercises = FH_EXERCISE_DATA.filter(currentFilters);
+          const grid = document.getElementById("exerciseGrid");
+          const emptyState = document.getElementById("emptyState");
+          
+          // Update stats
+          updateStats();
+          
+          if (exercises.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+          }
+          
+          grid.style.display = 'grid';
+          emptyState.style.display = 'none';
+          
+          grid.innerHTML = exercises.map(exercise => createExerciseCard(exercise)).join('');
+        }
+
+        // Create exercise card HTML
+        function createExerciseCard(exercise) {
+          const difficultyColors = {
+            'Easy': 'bg-success',
+            'Medium': 'bg-warning',
+            'Hard': 'bg-danger'
+          };
+          
+          return `
+            <div class="fh-card exercise-card p-4" onclick="showExerciseDetails('${exercise.id}')">
+              <div class="position-relative">
+                <span class="badge ${difficultyColors[exercise.difficulty]} difficulty-badge">${exercise.difficulty}</span>
+                <div class="exercise-icon text-center">${exercise.icon}</div>
+                <h5 class="text-center mb-3">${exercise.name}</h5>
+                <p class="text-muted text-center mb-3">${exercise.description}</p>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="badge bg-secondary">${exercise.bodyPart}</span>
+                  <span class="badge ${exercise.mode === 'Gym' ? 'bg-primary' : 'bg-success'}">${exercise.mode}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="badge calories-badge">${exercise.calories} cal/min</span>
+                  <small class="text-muted">${exercise.equipment}</small>
+                </div>
+                <button class="btn btn-neon w-100" onclick="event.stopPropagation(); addToPlan('${exercise.id}')">
+                  <span class="me-2">➕</span>Add to My Plan
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        // Show exercise details
+        window.showExerciseDetails = function(exerciseId) {
+          const exercise = FH_EXERCISE_DATA.getById(exerciseId);
+          if (!exercise) return;
+          
+          const modal = document.getElementById("exerciseDetails");
+          const content = document.getElementById("exerciseDetailsContent");
+          
+          const difficultyColors = {
+            'Easy': 'success',
+            'Medium': 'warning',
+            'Hard': 'danger'
+          };
+          
+          content.innerHTML = `
+            <div class="text-center mb-4">
+              <div class="exercise-icon">${exercise.icon}</div>
+              <h2 class="mb-2">${exercise.name}</h2>
+              <div class="d-flex justify-content-center gap-2 mb-3">
+                <span class="badge bg-${difficultyColors[exercise.difficulty]}">${exercise.difficulty}</span>
+                <span class="badge bg-secondary">${exercise.bodyPart}</span>
+                <span class="badge ${exercise.mode === 'Gym' ? 'bg-primary' : 'bg-success'}">${exercise.mode}</span>
+              </div>
+              <div class="badge calories-badge fs-6">${exercise.calories} calories per minute</div>
+            </div>
+            
+            <div class="mb-4">
+              <h5>Description</h5>
+              <p class="text-muted">${exercise.description}</p>
+            </div>
+            
+            <div class="mb-4">
+              <h5>Equipment Needed</h5>
+              <p class="text-muted">${exercise.equipment}</p>
+            </div>
+            
+            <div class="mb-4">
+              <h5>Instructions</h5>
+              <ol class="instructions-list">
+                ${exercise.instructions.map(instruction => `<li>${instruction}</li>`).join('')}
+              </ol>
+            </div>
+            
+            <div class="text-center">
+              <button class="btn btn-neon btn-lg" onclick="addToPlan('${exercise.id}')">
+                <span class="me-2">➕</span>Add to My Plan
+              </button>
+            </div>
+          `;
+          
+          modal.classList.add('show');
+        };
+
+        // Close exercise details
+        window.closeExerciseDetails = function() {
+          document.getElementById("exerciseDetails").classList.remove('show');
+        };
+
+        // Add exercise to plan
+        window.addToPlan = function(exerciseId) {
+          const exercise = FH_EXERCISE_DATA.getById(exerciseId);
+          if (!exercise) return;
+          
+          // Get current schedule
+          const schedule = JSON.parse(localStorage.getItem('fh_schedule') || '[]');
+          
+          // Add exercise to schedule
+          const scheduleItem = {
+            id: Date.now().toString(),
+            exerciseId: exercise.id,
+            exerciseName: exercise.name,
+            bodyPart: exercise.bodyPart,
+            calories: exercise.calories,
+            difficulty: exercise.difficulty,
+            mode: exercise.mode,
+            addedAt: new Date().toISOString()
+          };
+          
+          schedule.push(scheduleItem);
+          localStorage.setItem('fh_schedule', JSON.stringify(schedule));
+          
+          // Award points
+          const currentPoints = parseInt(localStorage.getItem('fh_points') || '0');
+          localStorage.setItem('fh_points', String(currentPoints + 5));
+          
+          // Show success message
+          showSuccessToast(exercise.name);
+        };
+
+        // Show success toast
+        function showSuccessToast(exerciseName) {
+          const messages = [
+            `🎉 ${exerciseName} added to your plan!`,
+            `💪 Great choice! ${exerciseName} is now in your schedule`,
+            `⭐ ${exerciseName} added! You're building an amazing routine`,
+            `🔥 ${exerciseName} is now part of your fitness journey!`
+          ];
+          
+          const message = messages[Math.floor(Math.random() * messages.length)];
+          
+          const toastEl = document.getElementById("successToast");
+          const messageEl = document.getElementById("toastMessage");
+          if (messageEl) messageEl.textContent = message;
+          
+          const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+          toast.show();
+        }
+
+        // Update statistics
+        function updateStats() {
+          const allExercises = FH_EXERCISE_DATA.exercises;
+          const gymExercises = allExercises.filter(ex => ex.mode === 'Gym').length;
+          const outdoorExercises = allExercises.filter(ex => ex.mode === 'Outdoor').length;
+          
+          document.getElementById("totalExercises").textContent = allExercises.length;
+          document.getElementById("gymCount").textContent = gymExercises;
+          document.getElementById("outdoorCount").textContent = outdoorExercises;
+        }
+
+        // Wire filter events
+        function wireFilters() {
+          const bodyPartFilter = document.getElementById("bodyPartFilter");
+          const modeFilter = document.getElementById("modeFilter");
+          const difficultyFilter = document.getElementById("difficultyFilter");
+          const searchInput = document.getElementById("searchInput");
+          const clearFiltersBtn = document.getElementById("clearFilters");
+          
+          bodyPartFilter.addEventListener("change", (e) => {
+            currentFilters.bodyPart = e.target.value;
+            loadExercises();
+          });
+          
+          modeFilter.addEventListener("change", (e) => {
+            currentFilters.mode = e.target.value;
+            loadExercises();
+          });
+          
+          difficultyFilter.addEventListener("change", (e) => {
+            currentFilters.difficulty = e.target.value;
+            loadExercises();
+          });
+          
+          searchInput.addEventListener("input", (e) => {
+            currentFilters.search = e.target.value;
+            loadExercises();
+          });
+          
+          clearFiltersBtn.addEventListener("click", clearAllFilters);
+        }
+
+        // Clear all filters
+        window.clearAllFilters = function() {
+          currentFilters = {
+            bodyPart: 'All',
+            mode: 'All',
+            difficulty: 'All',
+            search: ''
+          };
+          
+          document.getElementById("bodyPartFilter").value = 'All';
+          document.getElementById("modeFilter").value = 'All';
+          document.getElementById("difficultyFilter").value = 'All';
+          document.getElementById("searchInput").value = '';
+          
+          loadExercises();
+        };
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+          const modal = document.getElementById("exerciseDetails");
+          if (e.target === modal) {
+            closeExerciseDetails();
+          }
+        });
+
+        // Start the app
+        init();
+      })();
+    </script>
+  </body>
+</html>
